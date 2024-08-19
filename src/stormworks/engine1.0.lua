@@ -26,10 +26,6 @@ local BoolChannel = {
     setStarter = function(value)
         output.setBool(2, value)
     end;
-    --- @param value boolean
-    setBack = function(value)
-        output.setBool(3, value)
-    end;
 }
 local Property = {
     --- @field targetRps number
@@ -54,7 +50,7 @@ local ThrottlePosition = {
 }
 --- @return 0 | 1 | 2
 function ThrottlePosition.getPosition()
-    local handle = math.floor(NumChannel.getThrottle() * 100) / 100
+    local handle = NumChannel.getThrottle()
     if handle > 0 then
         return ThrottlePosition.FOREWORD
     end
@@ -67,11 +63,7 @@ end
 local starterCount = 0
 
 function onTick()
-    if position == ThrottlePosition.BACK then
-        BoolChannel.setBack(true)
-    else
-        BoolChannel.setBack(false)
-    end
+    local position = ThrottlePosition.getPosition()
 
     if not BoolChannel.getKey() then
         NumChannel.setAir(0)
@@ -91,11 +83,10 @@ function onTick()
         BoolChannel.setStarter(false)
     end
 
-    local position = ThrottlePosition.getPosition()
-    if not position == ThrottlePosition.CENTER then
-        currentFuel = currentFuel + Property.changeValue
-    else
+    if position == ThrottlePosition.CENTER then
         currentFuel = currentFuel - Property.changeValue
+    else
+        currentFuel = currentFuel + Property.changeValue
     end
 
     if currentFuel > Fuel.MAX then

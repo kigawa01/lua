@@ -4,155 +4,193 @@
 --- DateTime: 2023/01/29 1:00
 ---
 local NumChannel = {
-    --- @return number
-    getRps = function()
-        return input.getNumber(1)
-    end;
-    --- @param value number
-    setClutch = function(value)
-        output.setNumber(2, value)
-    end;
+--- @return number
+getRps = function()
+    return input.getNumber(1)
+end;
+--- @return number
+getThrottle = function()
+    return input.getNumber(2)
+end;
+--- @param value number
+setClutch = function(value)
+    output.setNumber(3, value)
+end;
 }
 local BoolChannel = {
-    --- @param value boolean
-    setOne = function(value)
-        output.setBool(1, value)
-    end;
-    --- @param value boolean
-    setTwo = function(value)
-        output.setBool(2, value)
-    end;
-    --- @param value boolean
-    setThree = function(value)
-        output.setBool(3, value)
-    end;
-    --- @param value boolean
-    setFor = function(value)
-        output.setBool(4, value)
-    end;
+--- @param value boolean
+setOne = function(value)
+    output.setBool(1, value)
+end;
+--- @param value boolean
+setTwo = function(value)
+    output.setBool(2, value)
+end;
+--- @param value boolean
+setThree = function(value)
+    output.setBool(3, value)
+end;
+--- @param value boolean
+setFor = function(value)
+    output.setBool(4, value)
+end;
+--- @param value boolean
+setBack = function(value)
+    output.setBool(5, value)
+end;
 }
 local Property = {
-    --- @field targetRps number
-    targetRps = property.getNumber("target rps");
-    --- @field targetRps number
-    changeRate = property.getNumber("change rate");
+--- @field targetRps number
+targetRps = property.getNumber("target rps");
+--- @field targetRps number
+changeRate = property.getNumber("change rate");
 }
--- ------------------------------
-local Rps = {
-    MIN = 0;
-    MAX = 65;
-}
-local beforeRps = 0;
-local currentRps = 0;
 -- ---------------------------------------------------------
---- @field current number
-local Clutch = {
-    MIN = 5000;
-    MAX = 10000;
+local Rps = {
+MIN = 0;
+MAX = 65;
 }
-local currentClutch = 1000;
-local function maxClutchDiff()
-    return Clutch.MAX - Clutch.MIN
-end
 -- ---------------------------------------------------------
 local Gear = {
-    MAX = 4;
-    MIN = 1;
+--- @field one boolean
+one = false;
+--- @field two boolean
+two = false;
+--- @field three boolean
+three = false;
+--- @field four boolean
+four = false;
 }
-local gearOne = false
-local gearTwo = false
-local gearThree = false
-local gearFour = false
+---@return boolean
+function Gear.isMax()
+return Gear.one and Gear.two and Gear.three and Gear.four
+end
+function Gear.isMin()
+return not (Gear.one or Gear.two or Gear.three or Gear.four)
+end
 function Gear.up()
-    if gearOne then
-        if gearTwo then
-            currentClutch = Clutch.MAX
-            return
-        end
-        gearOne = false
-        gearTwo = true
+if Gear.One then
+    if Gear.Two then
         return
     end
-
-    if gearTwo then
-        if gearThree then
-            gearOne = true
-            return
-        end
-        gearTwo = false
-        gearThree = true
-        return
-    end
-
-    if gearThree then
-        if gearFour then
-            gearOne = true
-            return
-        end
-        gearThree = false
-        gearFour = true
-        return
-    end
-    gearOne = true
+    Gear.One = false
+    Gear.Two = true
     return
+end
+
+if Gear.Two then
+    if Gear.Three then
+        Gear.One = true
+        return
+    end
+    Gear.Two = false
+    Gear.Three = true
+    return
+end
+
+if Gear.Three then
+    if Gear.Four then
+        Gear.One = true
+        return
+    end
+    Gear.Three = false
+    Gear.Four = true
+    return
+end
+Gear.One = true
+return
 end
 function Gear.down()
-    if gearOne and not gearTwo and not gearThree and not gearFour then
-        currentClutch = Clutch.MIN
-        return
-    end
-    if gearOne then
-        gearOne = false
-        return
-    end
-    if gearTwo then
-        gearOne = true
-        gearTwo = false
-        return
-    end
-    if gearThree then
-        gearTwo = true
-        gearThree = false
-        return
-    end
-    gearThree = true
-    gearFour = false
+if Gear.One then
+    Gear.One = false
     return
 end
+if Gear.Two then
+    Gear.One = true
+    Gear.Two = false
+    return
+end
+if Gear.Three then
+    Gear.Two = true
+    Gear.Three = false
+    return
+end
+if Gear.four then
+    Gear.Three = true
+    Gear.Four = false
+    return
+end
+return
+end
 -- ---------------------------------------------------------
-local function down()
-    local maxDiff = currentRps - Rps.MIN
-    local diff = Property.targetRps - currentRps
-    local diffRate = diff / maxDiff
-    currentClutch = currentClutch - ((currentClutch * diffRate) * (Property.changeRate / 100))
-    if currentClutch < Clutch.MIN then
-        currentClutch = Clutch.MAX
-        Gear.down()
-    end
+local Clutch = {
+--- @field percent number
+percent = 0
+}
+--- @param percent number
+function Clutch.setClutch(percent)
+Clutch.percent = percent
+if Clutch.percent > 100 then
+    Clutch.percent = 100
+end
+if Clutch.percent < 0 then
+    Clutch.percent = 0
+end
+NumChannel.setClutch(percent / 100)
+end
+---@param percentDiff number
+function Clutch.up(percentDiff)
+Clutch.setClutch(Clutch.percent + percentDiff)
+end
+---@param percentDiff number
+function Clutch.down(percentDiff)
+Clutch.setClutch(Clutch.percent - percentDiff)
+end
+-- ---------------------------------------------------------
+local function onEnd()
+BoolChannel.setOne(Gear.one)
+BoolChannel.setTwo(Gear.two)
+BoolChannel.setThree(Gear.three)
+BoolChannel.setFor(Gear.four)
 end
 -- ---------------------------------------------------------
 local function up()
-    local maxDiff = Rps.MAX - currentRps
-    local diff = currentRps - Property.targetRps
-    local diffRate = diff / maxDiff
-    currentClutch = currentClutch + ((currentClutch * diffRate) * (Property.changeRate / 100))
-    if currentClutch > Clutch.MAX then
-        currentClutch = Clutch.MIN
-        Gear.up()
-    end
+if Clutch.percent < 100 then
+    Clutch.up(1)
+    return
+end
+if Gear.isMax() then
+    return
+end
+Gear.up()
+Clutch.setClutch(0)
+end
+local function down()
+if Clutch.percent > 0 then
+    Clutch.down(1)
+    return
+end
+if Gear.isMin() then
+    return
+end
+Gear.down()
+Clutch.setClutch(100)
 end
 -- ---------------------------------------------------------
 function onTick()
-    currentRps = NumChannel.getRps()
-    if currentRps > Property.targetRps then
-        up()
-    else
-        down()
-    end
-    NumChannel.setClutch(currentClutch / Clutch.MAX)
-    BoolChannel.setOne(gearOne)
-    BoolChannel.setTwo(gearTwo)
-    BoolChannel.setThree(gearThree)
-    BoolChannel.setFor(gearFour)
-    beforeRps = currentRps
+local currentRps = NumChannel.getRps()
+local throttle = NumChannel.getThrottle()
+if throttle > 0 then
+    BoolChannel.setBack(false)
+elseif throttle < 0 then
+    BoolChannel.setBack(true)
+else
+    return
+end
+if currentRps > Property.targetRps then
+    up()
+else
+    down()
+end
+onEnd()
 end
